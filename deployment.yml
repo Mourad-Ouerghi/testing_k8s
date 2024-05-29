@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: giap-deployment
+  labels:
+    app: giap
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: giap
+  template:
+    metadata:
+      labels:
+        app: giap
+    spec:
+      containers:
+        - name: giap-app
+          image: ouerghimourad/giap-migration:77
+          ports:
+            - containerPort: 8080
+          env:
+            - name: GITHUB_VERSION_NUMBER
+              value: ${GITHUB_RUN_NUMBER}
+      volumes:
+        - name: giap-db-data
+          persistentVolumeClaim:
+            claimName: giap-db-pvc
+        - name: axon-server-data
+          persistentVolumeClaim:
+            claimName: axon-server-pvc
+      initContainers:
+        - name: giap-db
+          image: postgres:13
+          command: ['sh', '-c', 'echo "Initializing giap-db"']
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: giap-db-data
+              mountPath: /var/lib/postgresql/data
+        - name: giap-axon-server
+          image: axoniq/axonserver
+          command: ['sh', '-c', 'echo "Initializing axon-server"']
+          ports:
+            - containerPort: 8024
+            - containerPort: 8124
+          volumeMounts:
+            - name: axon-server-data
+              mountPath: /data
+            - name: axon-server-events
+              mountPath: /eventdata
+            - name: axon-server-config
+              mountPath: /config
+      volumes:
+        - name: giap-db-data
+          persistentVolumeClaim:
+            claimName: giap-db-pvc
+        - name: axon-server-data
+          persistentVolumeClaim:
+            claimName: axon-server-pvc
+        - name: axon-server-events
+          persistentVolumeClaim:
+            claimName: axon-server-events-pvc
+        - name: axon-server-config
+          persistentVolumeClaim:
+            claimName: axon-server-config-pvc
